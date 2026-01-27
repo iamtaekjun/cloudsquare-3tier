@@ -37,11 +37,13 @@ jobs:
       - name: Deploy Backend to WAS Servers
         run: |
           # WAS-1 (자기 자신)
+          mkdir -p /home/runner/app
           cp -r backend/* /home/runner/app/
           cd /home/runner/app && npm install --production
           pm2 restart todo-api || pm2 start src/index.js --name todo-api
 
           # WAS-2
+          ssh -i /home/runner/.ssh/id_rsa -o StrictHostKeyChecking=no root@10.0.3.9 "mkdir -p /root/app"
           scp -i /home/runner/.ssh/id_rsa -o StrictHostKeyChecking=no -r backend/* root@10.0.3.9:/root/app/
           ssh -i /home/runner/.ssh/id_rsa -o StrictHostKeyChecking=no root@10.0.3.9 "cd /root/app && npm install --production && (pm2 restart todo-api || pm2 start src/index.js --name todo-api)"
 
