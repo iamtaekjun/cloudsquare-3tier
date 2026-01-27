@@ -1,0 +1,118 @@
+name: Deploy Todo App
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  WEB_SERVERS: ${{ secrets.WEB_SERVERS }}  # "10.0.1.10,10.0.1.11"
+  WAS_SERVERS: ${{ secrets.WAS_SERVERS }}  # "10.0.3.10,10.0.3.11"
+
+jobs:
+  build-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build
+        working-directory: frontend
+        env:
+          VITE_API_URL: ${{ secrets.API_URL }}
+        run: npm run build
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/dist
+
+  build-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-build
+          path: backend
+
+  deploy-web:
+    needs: build-frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: dist
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.BASTION_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to Web Servers
+        run: |
+          IFS=',' read -ra SERVERS <<< "$WEB_SERVERS"
+          for SERVER in "${SERVERS[@]}"; do
+            echo "Deploying to Web Server: $SERVER"
+
+            # Copy files via bastion
+            scp -o StrictHostKeyChecking=no -o ProxyJump=${{ secrets.SSH_USER }}@${{ secrets.BASTION_HOST }} \
+              -r dist/* ${{ secrets.SSH_USER }}@$SERVER:/var/www/html/
+
+            # Reload nginx
+            ssh -o StrictHostKeyChecking=no -o ProxyJump=${{ secrets.SSH_USER }}@${{ secrets.BASTION_HOST }} \
+              ${{ secrets.SSH_USER }}@$SERVER "sudo systemctl reload nginx"
+          done
+
+  deploy-was:
+    needs: build-backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-build
+          path: backend
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.BASTION_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to WAS Servers
+        run: |
+          IFS=',' read -ra SERVERS <<< "$WAS_SERVERS"
+          for SERVER in "${SERVERS[@]}"; do
+            echo "Deploying to WAS Server: $SERVER"
+
+            # Copy files via bastion
+            scp -o StrictHostKeyChecking=no -o ProxyJump=${{ secrets.SSH_USER }}@${{ secrets.BASTION_HOST }} \
+              -r backend/* ${{ secrets.SSH_USER }}@$SERVER:/home/${{ secrets.SSH_USER }}/app/
+
+            # Install dependencies and restart
+            ssh -o StrictHostKeyChecking=no -o ProxyJump=${{ secrets.SSH_USER }}@${{ secrets.BASTION_HOST }} \
+              ${{ secrets.SSH_USER }}@$SERVER << 'EOF'
+              cd ~/app
+              npm install --production
+              pm2 restart todo-api || pm2 start src/index.js --name todo-api
+            EOF
+          done
