@@ -25,8 +25,8 @@ jobs:
 
       - name: Deploy Frontend to Web Servers
         run: |
-          scp -o StrictHostKeyChecking=no -r frontend/dist/* root@10.0.1.8:/var/www/html/
-          scp -o StrictHostKeyChecking=no -r frontend/dist/* root@10.0.1.9:/var/www/html/
+          scp -i /home/runner/.ssh/id_rsa -o StrictHostKeyChecking=no -r frontend/dist/* root@10.0.1.8:/var/www/html/
+          scp -i /home/runner/.ssh/id_rsa -o StrictHostKeyChecking=no -r frontend/dist/* root@10.0.1.9:/var/www/html/
 
       - name: Deploy Backend to WAS Servers
         run: |
@@ -36,10 +36,10 @@ jobs:
           pm2 restart todo-api || pm2 start src/index.js --name todo-api
 
           # WAS-2
-          scp -o StrictHostKeyChecking=no -r backend/* root@10.0.3.9:/root/app/
-          ssh -o StrictHostKeyChecking=no root@10.0.3.9 "cd /root/app && npm install --production && (pm2 restart todo-api || pm2 start src/index.js --name todo-api)"
+          scp -i /home/runner/.ssh/id_rsa -o StrictHostKeyChecking=no -r backend/* root@10.0.3.9:/root/app/
+          ssh -i /home/runner/.ssh/id_rsa -o StrictHostKeyChecking=no root@10.0.3.9 "cd /root/app && npm install --production && (pm2 restart todo-api || pm2 start src/index.js --name todo-api)"
 
       - name: Reload Nginx
         run: |
-          ssh -o StrictHostKeyChecking=no root@10.0.1.8 "sudo systemctl reload nginx"
-          ssh -o StrictHostKeyChecking=no root@10.0.1.9 "sudo systemctl reload nginx"
+          ssh -i /home/runner/.ssh/id_rsa -o StrictHostKeyChecking=no root@10.0.1.8 "systemctl reload nginx"
+          ssh -i /home/runner/.ssh/id_rsa -o StrictHostKeyChecking=no root@10.0.1.9 "systemctl reload nginx"
