@@ -22,6 +22,12 @@ function App() {
     return date.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
   }
 
+  // UTC 날짜를 로컬 날짜 문자열로 변환
+  const parseDate = (dateStr) => {
+    const date = new Date(dateStr)
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+  }
+
   // 캘린더 데이터 조회 (월별 Todo 개수)
   const fetchCalendarData = async (year, month) => {
     try {
@@ -30,7 +36,7 @@ function App() {
       const data = await res.json()
       const mapped = {}
       data.forEach(item => {
-        const dateStr = item.due_date.split('T')[0]
+        const dateStr = parseDate(item.due_date)
         mapped[dateStr] = { count: item.count, completed: item.completed_count }
       })
       setCalendarData(mapped)
