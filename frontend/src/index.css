@@ -22,6 +22,167 @@ h1 {
   margin-bottom: 30px;
 }
 
+/* Calendar Styles */
+.calendar-container {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.calendar-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.calendar-nav span {
+  font-size: 18px;
+  font-weight: 600;
+  min-width: 150px;
+  text-align: center;
+}
+
+.calendar-nav button {
+  padding: 8px 16px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.calendar-nav button:hover {
+  background: #0056b3;
+}
+
+.calendar-nav .today-btn {
+  background: #28a745;
+  margin-left: 10px;
+}
+
+.calendar-nav .today-btn:hover {
+  background: #1e7e34;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.calendar-header-cell {
+  text-align: center;
+  padding: 10px 0;
+  font-weight: 600;
+  font-size: 14px;
+  color: #666;
+}
+
+.calendar-header-cell.sunday {
+  color: #dc3545;
+}
+
+.calendar-header-cell.saturday {
+  color: #007bff;
+}
+
+.calendar-cell {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  min-height: 50px;
+}
+
+.calendar-cell:hover:not(.empty) {
+  background: #f0f0f0;
+}
+
+.calendar-cell.empty {
+  cursor: default;
+}
+
+.calendar-cell .day-number {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.calendar-cell.sunday .day-number {
+  color: #dc3545;
+}
+
+.calendar-cell.saturday .day-number {
+  color: #007bff;
+}
+
+.calendar-cell.today {
+  background: #e3f2fd;
+}
+
+.calendar-cell.today .day-number {
+  color: #1976d2;
+  font-weight: 700;
+}
+
+.calendar-cell.selected {
+  background: #007bff;
+}
+
+.calendar-cell.selected .day-number {
+  color: white !important;
+}
+
+.calendar-cell.selected .todo-indicator .count {
+  color: white;
+}
+
+.todo-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.todo-indicator .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ff9800;
+}
+
+.todo-indicator .dot.all-done {
+  background: #4caf50;
+}
+
+.todo-indicator .count {
+  font-size: 10px;
+  color: #666;
+}
+
+/* Selected Date */
+.selected-date {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.selected-date h2 {
+  font-size: 18px;
+  color: #333;
+  font-weight: 500;
+}
+
+/* Todo Form */
 .todo-form {
   display: flex;
   gap: 10px;
@@ -57,6 +218,7 @@ h1 {
   background: #0056b3;
 }
 
+/* Todo List */
 .todo-list {
   list-style: none;
 }
@@ -102,6 +264,14 @@ h1 {
   background: #c82333;
 }
 
+.no-todos {
+  text-align: center;
+  padding: 30px;
+  color: #999;
+  background: white;
+  border-radius: 8px;
+}
+
 .loading, .error {
   text-align: center;
   padding: 20px;
@@ -110,4 +280,7 @@ h1 {
 
 .error {
   color: #dc3545;
+  background: #ffebee;
+  border-radius: 8px;
+  margin-bottom: 20px;
 }
