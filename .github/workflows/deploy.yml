@@ -23,12 +23,6 @@ jobs:
           npm install
           VITE_API_URL=/api npm run build
 
-      - name: Debug SSH
-        run: |
-          whoami
-          ls -la /home/runner/.ssh/
-          ssh -i /home/runner/.ssh/id_rsa -o StrictHostKeyChecking=no -v root@10.0.1.8 "echo connected"
-
       - name: Deploy Frontend to Web Servers
         run: |
           scp -i /home/runner/.ssh/id_rsa -o StrictHostKeyChecking=no -r $GITHUB_WORKSPACE/frontend/dist/* root@10.0.1.8:/var/www/html/
