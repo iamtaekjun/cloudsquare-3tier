@@ -10,6 +10,9 @@ function App() {
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [calendarData, setCalendarData] = useState({})
+  const [imageFile, setImageFile] = useState(null)
+  const [imagePreview, setImagePreview] = useState(null)
+  const [uploading, setUploading] = useState(false)
 
   const formatDate = (date) => {
     const year = date.getFullYear()
@@ -70,24 +73,63 @@ function App() {
     fetchCalendarData(currentMonth.getFullYear(), currentMonth.getMonth() + 1)
   }, [currentMonth])
 
+  // 이미지 선택
+  const handleImageChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      setImageFile(file)
+      setImagePreview(URL.createObjectURL(file))
+    }
+  }
+
+  // 이미지 제거
+  const clearImage = () => {
+    setImageFile(null)
+    setImagePreview(null)
+  }
+
+  // Presigned URL로 이미지 업로드
+  const uploadImage = async (file) => {
+    const res = await fetch(`${API_URL}/upload-url?filename=${encodeURIComponent(file.name)}&contentType=${encodeURIComponent(file.type)}`)
+    if (!res.ok) throw new Error('Failed to get upload URL')
+    const { uploadUrl, imageUrl } = await res.json()
+
+    await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': file.type },
+      body: file
+    })
+
+    return imageUrl
+  }
+
   // Todo 추가
   const addTodo = async (e) => {
     e.preventDefault()
     if (!newTodo.trim()) return
 
     try {
+      setUploading(true)
+      let imageUrl = null
+      if (imageFile) {
+        imageUrl = await uploadImage(imageFile)
+      }
+
       const res = await fetch(`${API_URL}/todos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: newTodo, due_date: formatDate(selectedDate) })
+        body: JSON.stringify({ title: newTodo, due_date: formatDate(selectedDate), image_url: imageUrl })
       })
       if (!res.ok) throw new Error('Failed to add')
       const todo = await res.json()
       setTodos([todo, ...todos])
       setNewTodo('')
+      clearImage()
       fetchCalendarData(currentMonth.getFullYear(), currentMonth.getMonth() + 1)
     } catch (err) {
       setError('할 일 추가에 실패했습니다.')
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -213,13 +255,27 @@ function App() {
       </div>
 
       <form className="todo-form" onSubmit={addTodo}>
-        <input
-          type="text"
-          value={newTodo}
-          onChange={(e) => setNewTodo(e.target.value)}
-          placeholder="할 일을 입력하세요"
-        />
-        <button type="submit">추가</button>
+        <div className="todo-input-row">
+          <input
+            type="text"
+            value={newTodo}
+            onChange={(e) => setNewTodo(e.target.value)}
+            placeholder="할 일을 입력하세요"
+          />
+          <label className="image-btn">
+            📎
+            <input type="file" accept="image/*" onChange={handleImageChange} hidden />
+          </label>
+          <button type="submit" disabled={uploading}>
+            {uploading ? '업로드 중...' : '추가'}
+          </button>
+        </div>
+        {imagePreview && (
+          <div className="image-preview">
+            <img src={imagePreview} alt="미리보기" />
+            <button type="button" onClick={clearImage}>✕</button>
+          </div>
+        )}
       </form>
 
       {loading ? (
@@ -236,7 +292,17 @@ function App() {
                   checked={todo.completed}
                   onChange={() => toggleTodo(todo.id, todo.completed)}
                 />
-                <span>{todo.title}</span>
+                <div className="todo-content">
+                  <span>{todo.title}</span>
+                  {todo.image_url && (
+                    <img
+                      className="todo-image"
+                      src={todo.image_url}
+                      alt="첨부 이미지"
+                      onClick={() => window.open(todo.image_url, '_blank')}
+                    />
+                  )}
+                </div>
                 <button onClick={() => deleteTodo(todo.id)}>삭제</button>
               </li>
             ))

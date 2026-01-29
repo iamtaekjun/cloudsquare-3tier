@@ -2,6 +2,8 @@ import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
 import mysql from 'mysql2/promise'
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 dotenv.config()
 
@@ -11,6 +13,17 @@ const PORT = process.env.PORT || 3000
 // Middleware
 app.use(cors())
 app.use(express.json())
+
+// NCP Object Storage (S3 호환)
+const s3 = new S3Client({
+  region: 'kr-standard',
+  endpoint: 'https://kr.object.ncloudstorage.com',
+  credentials: {
+    accessKeyId: process.env.NCP_ACCESS_KEY,
+    secretAccessKey: process.env.NCP_SECRET_KEY
+  }
+})
+const BUCKET_NAME = process.env.NCP_BUCKET_NAME
 
 // Database connection pool
 const pool = mysql.createPool({
@@ -39,6 +52,15 @@ async function initDB() {
     await pool.execute(`
       ALTER TABLE todos ADD COLUMN IF NOT EXISTS due_date DATE DEFAULT (CURRENT_DATE)
     `).catch(() => {})
+    // Add image_url column if not exists
+    const [cols] = await pool.execute(
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'todos' AND COLUMN_NAME = 'image_url'`,
+      [process.env.DB_NAME]
+    )
+    if (cols.length === 0) {
+      await pool.execute('ALTER TABLE todos ADD COLUMN image_url VARCHAR(512) DEFAULT NULL')
+    }
     console.log('Database initialized')
   } catch (err) {
     console.error('Database initialization failed:', err.message)
@@ -48,6 +70,29 @@ async function initDB() {
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
+})
+
+// Presigned URL 발급 (이미지 업로드용)
+app.get('/api/upload-url', async (req, res) => {
+  try {
+    const { filename, contentType } = req.query
+    if (!filename || !contentType) {
+      return res.status(400).json({ error: 'filename and contentType are required' })
+    }
+    const key = `images/${Date.now()}-${filename}`
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+      ContentType: contentType,
+      ACL: 'public-read'
+    })
+    const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 300 })
+    const imageUrl = `https://kr.object.ncloudstorage.com/${BUCKET_NAME}/${key}`
+    res.json({ uploadUrl, imageUrl })
+  } catch (err) {
+    console.error('Error generating presigned URL:', err)
+    res.status(500).json({ error: 'Failed to generate upload URL' })
+  }
 })
 
 // Get all todos (with optional date filter)
@@ -91,7 +136,7 @@ app.get('/api/todos/calendar', async (req, res) => {
 
 // Create todo
 app.post('/api/todos', async (req, res) => {
-  const { title, due_date } = req.body
+  const { title, due_date, image_url } = req.body
   if (!title || !title.trim()) {
     return res.status(400).json({ error: 'Title is required' })
   }
@@ -99,8 +144,8 @@ app.post('/api/todos', async (req, res) => {
   try {
     const dateValue = due_date || new Date().toISOString().split('T')[0]
     const [result] = await pool.execute(
-      'INSERT INTO todos (title, due_date) VALUES (?, ?)',
-      [title.trim(), dateValue]
+      'INSERT INTO todos (title, due_date, image_url) VALUES (?, ?, ?)',
+      [title.trim(), dateValue, image_url || null]
     )
     const [rows] = await pool.execute('SELECT * FROM todos WHERE id = ?', [result.insertId])
     res.status(201).json(rows[0])
@@ -113,7 +158,7 @@ app.post('/api/todos', async (req, res) => {
 // Update todo
 app.patch('/api/todos/:id', async (req, res) => {
   const { id } = req.params
-  const { title, completed, due_date } = req.body
+  const { title, completed, due_date, image_url } = req.body
 
   try {
     const updates = []
@@ -130,6 +175,10 @@ app.patch('/api/todos/:id', async (req, res) => {
     if (due_date !== undefined) {
       updates.push('due_date = ?')
       values.push(due_date)
+    }
+    if (image_url !== undefined) {
+      updates.push('image_url = ?')
+      values.push(image_url)
     }
 
     if (updates.length === 0) {
