@@ -4,6 +4,7 @@ import dotenv from 'dotenv'
 import mysql from 'mysql2/promise'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import multer from 'multer'
 
 dotenv.config()
 
@@ -24,6 +25,7 @@ const s3 = new S3Client({
   }
 })
 const BUCKET_NAME = process.env.NCP_BUCKET_NAME
+const upload = multer({ storage: multer.memoryStorage() })
 
 // Database connection pool
 const pool = mysql.createPool({
@@ -92,6 +94,28 @@ app.get('/api/upload-url', async (req, res) => {
   } catch (err) {
     console.error('Error generating presigned URL:', err)
     res.status(500).json({ error: 'Failed to generate upload URL' })
+  }
+})
+
+// WAS 경유 업로드 (비교 테스트용)
+app.post('/api/upload-direct', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' })
+    }
+    const key = `images/${Date.now()}-${req.file.originalname}`
+    await s3.send(new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+      Body: req.file.buffer,
+      ContentType: req.file.mimetype,
+      ACL: 'public-read'
+    }))
+    const imageUrl = `https://kr.object.ncloudstorage.com/${BUCKET_NAME}/${key}`
+    res.json({ imageUrl })
+  } catch (err) {
+    console.error('Error uploading file:', err)
+    res.status(500).json({ error: 'Failed to upload file' })
   }
 })
 
