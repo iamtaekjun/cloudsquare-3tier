@@ -1,6 +1,7 @@
 import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
+import crypto from 'crypto'
 import mysql from 'mysql2/promise'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
@@ -27,6 +28,61 @@ const s3 = new S3Client({
 const BUCKET_NAME = process.env.NCP_BUCKET_NAME
 const upload = multer({ storage: multer.memoryStorage() })
 
+// NCP KMS 암호화/복호화
+const KMS_KEY_TAG = process.env.NCP_KMS_KEY_TAG
+const NCP_ACCESS_KEY = process.env.NCP_ACCESS_KEY
+const NCP_SECRET_KEY = process.env.NCP_SECRET_KEY
+
+function makeSignature(method, url, timestamp) {
+  const space = ' '
+  const newLine = '\n'
+  const message = method + space + url + newLine + timestamp + newLine + NCP_ACCESS_KEY
+  const hmac = crypto.createHmac('sha256', NCP_SECRET_KEY)
+  return hmac.update(message).digest('base64')
+}
+
+async function kmsEncrypt(plaintext) {
+  const timestamp = Date.now().toString()
+  const url = '/keys/v2/encrypt'
+  const signature = makeSignature('POST', url, timestamp)
+  const body = JSON.stringify({ plaintext: Buffer.from(plaintext).toString('base64'), keyTag: KMS_KEY_TAG })
+
+  const res = await fetch('https://kms.apigw.ntruss.com/keys/v2/encrypt', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-ncp-apigw-timestamp': timestamp,
+      'x-ncp-iam-access-key': NCP_ACCESS_KEY,
+      'x-ncp-apigw-signature-v2': signature
+    },
+    body
+  })
+  const data = await res.json()
+  if (data.code !== 'SUCCESS') throw new Error(`KMS encrypt failed: ${data.msg}`)
+  return data.data.ciphertext
+}
+
+async function kmsDecrypt(ciphertext) {
+  const timestamp = Date.now().toString()
+  const url = '/keys/v2/decrypt'
+  const signature = makeSignature('POST', url, timestamp)
+  const body = JSON.stringify({ ciphertext, keyTag: KMS_KEY_TAG })
+
+  const res = await fetch('https://kms.apigw.ntruss.com/keys/v2/decrypt', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-ncp-apigw-timestamp': timestamp,
+      'x-ncp-iam-access-key': NCP_ACCESS_KEY,
+      'x-ncp-apigw-signature-v2': signature
+    },
+    body
+  })
+  const data = await res.json()
+  if (data.code !== 'SUCCESS') throw new Error(`KMS decrypt failed: ${data.msg}`)
+  return Buffer.from(data.data.plaintext, 'base64').toString('utf8')
+}
+
 // Database connection pool
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
@@ -44,7 +100,7 @@ async function initDB() {
     await pool.execute(`
       CREATE TABLE IF NOT EXISTS todos (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        title VARCHAR(255) NOT NULL,
+        title TEXT NOT NULL,
         completed BOOLEAN DEFAULT FALSE,
         due_date DATE DEFAULT (CURRENT_DATE),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -133,6 +189,9 @@ app.get('/api/todos', async (req, res) => {
     query += ' ORDER BY created_at DESC'
 
     const [rows] = await pool.execute(query, params)
+    for (const row of rows) {
+      try { row.title = await kmsDecrypt(row.title) } catch { /* 기존 평문 데이터 호환 */ }
+    }
     res.json(rows)
   } catch (err) {
     console.error('Error fetching todos:', err)
@@ -167,11 +226,13 @@ app.post('/api/todos', async (req, res) => {
 
   try {
     const dateValue = due_date || new Date().toISOString().split('T')[0]
+    const encryptedTitle = await kmsEncrypt(title.trim())
     const [result] = await pool.execute(
       'INSERT INTO todos (title, due_date, image_url) VALUES (?, ?, ?)',
-      [title.trim(), dateValue, image_url || null]
+      [encryptedTitle, dateValue, image_url || null]
     )
     const [rows] = await pool.execute('SELECT * FROM todos WHERE id = ?', [result.insertId])
+    rows[0].title = await kmsDecrypt(rows[0].title)
     res.status(201).json(rows[0])
   } catch (err) {
     console.error('Error creating todo:', err)
@@ -190,7 +251,7 @@ app.patch('/api/todos/:id', async (req, res) => {
 
     if (title !== undefined) {
       updates.push('title = ?')
-      values.push(title.trim())
+      values.push(await kmsEncrypt(title.trim()))
     }
     if (completed !== undefined) {
       updates.push('completed = ?')
@@ -216,6 +277,7 @@ app.patch('/api/todos/:id', async (req, res) => {
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Todo not found' })
     }
+    try { rows[0].title = await kmsDecrypt(rows[0].title) } catch { /* 평문 호환 */ }
     res.json(rows[0])
   } catch (err) {
     console.error('Error updating todo:', err)
