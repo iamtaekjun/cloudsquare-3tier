@@ -43,11 +43,11 @@ function makeSignature(method, url, timestamp) {
 
 async function kmsEncrypt(plaintext) {
   const timestamp = Date.now().toString()
-  const url = '/keys/v2/encrypt'
+  const url = `/keys/v2/${KMS_KEY_TAG}/encrypt`
   const signature = makeSignature('POST', url, timestamp)
-  const body = JSON.stringify({ plaintext: Buffer.from(plaintext).toString('base64'), keyTag: KMS_KEY_TAG })
+  const body = JSON.stringify({ plaintext: Buffer.from(plaintext).toString('base64') })
 
-  const res = await fetch('https://kms.apigw.ntruss.com/keys/v2/encrypt', {
+  const res = await fetch(`https://kms.apigw.ntruss.com/keys/v2/${KMS_KEY_TAG}/encrypt`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -65,11 +65,11 @@ async function kmsEncrypt(plaintext) {
 
 async function kmsDecrypt(ciphertext) {
   const timestamp = Date.now().toString()
-  const url = '/keys/v2/decrypt'
+  const url = `/keys/v2/${KMS_KEY_TAG}/decrypt`
   const signature = makeSignature('POST', url, timestamp)
-  const body = JSON.stringify({ ciphertext, keyTag: KMS_KEY_TAG })
+  const body = JSON.stringify({ ciphertext })
 
-  const res = await fetch('https://kms.apigw.ntruss.com/keys/v2/decrypt', {
+  const res = await fetch(`https://kms.apigw.ntruss.com/keys/v2/${KMS_KEY_TAG}/decrypt`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
