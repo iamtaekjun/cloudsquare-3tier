@@ -58,7 +58,8 @@ async function kmsEncrypt(plaintext) {
     body
   })
   const data = await res.json()
-  if (data.code !== 'SUCCESS') throw new Error(`KMS encrypt failed: ${data.msg}`)
+  console.log('KMS encrypt response:', JSON.stringify(data))
+  if (data.code !== 'SUCCESS') throw new Error(`KMS encrypt failed: ${JSON.stringify(data)}`)
   return data.data.ciphertext
 }
 
