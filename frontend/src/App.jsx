@@ -115,7 +115,7 @@ function App() {
   const [user, setUserState] = useState(getUser())
   const [todos, setTodos] = useState([])
   const [newTodo, setNewTodo] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [currentMonth, setCurrentMonth] = useState(new Date())
@@ -124,8 +124,8 @@ function App() {
   const [imagePreview, setImagePreview] = useState(null)
   const [uploading, setUploading] = useState(false)
 
-  const handleLogin = (user) => {
-    setUserState(user)
+  const handleLogin = (userData) => {
+    setUserState(userData)
   }
 
   const handleLogout = () => {
@@ -134,11 +134,6 @@ function App() {
     setUserState(null)
     setTodos([])
     setCalendarData({})
-  }
-
-  // 로그인 안 했으면 로그인 폼 보여주기
-  if (!user) {
-    return <AuthForm onLogin={handleLogin} />
   }
 
   const formatDate = (date) => {
@@ -192,13 +187,23 @@ function App() {
     }
   }
 
+  // useEffect는 조건문 전에 위치해야 함
   useEffect(() => {
-    fetchTodos(selectedDate)
-  }, [selectedDate])
+    if (user) {
+      fetchTodos(selectedDate)
+    }
+  }, [selectedDate, user])
 
   useEffect(() => {
-    fetchCalendarData(currentMonth.getFullYear(), currentMonth.getMonth() + 1)
-  }, [currentMonth])
+    if (user) {
+      fetchCalendarData(currentMonth.getFullYear(), currentMonth.getMonth() + 1)
+    }
+  }, [currentMonth, user])
+
+  // 로그인 안 했으면 로그인 폼 보여주기
+  if (!user) {
+    return <AuthForm onLogin={handleLogin} />
+  }
 
   // 이미지 선택
   const handleImageChange = (e) => {
