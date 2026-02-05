@@ -11,9 +11,22 @@ body {
 }
 
 .container {
-  max-width: 600px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 40px 20px;
+  padding: 40px 24px;
+}
+
+.main-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .main-content {
+    grid-template-columns: 1fr;
+  }
 }
 
 h1 {
@@ -23,13 +36,22 @@ h1 {
   font-weight: 600;
 }
 
+.left-panel {
+  position: sticky;
+  top: 24px;
+}
+
+.right-panel {
+  min-height: 0;
+}
+
 /* Calendar Styles */
 .calendar-container {
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(10px);
   border-radius: 16px;
   padding: 24px;
-  margin-bottom: 24px;
+  margin-bottom: 0;
   box-shadow: 0 4px 20px rgba(45, 90, 71, 0.08);
   border: 1px solid rgba(45, 90, 71, 0.06);
 }
@@ -180,14 +202,14 @@ h1 {
 
 /* Selected Date */
 .selected-date {
-  text-align: center;
+  text-align: left;
   margin-bottom: 20px;
 }
 
 .selected-date h2 {
-  font-size: 18px;
+  font-size: 20px;
   color: #2d5a47;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 /* Todo Form */

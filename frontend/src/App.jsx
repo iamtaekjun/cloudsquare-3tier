@@ -376,77 +376,83 @@ function App() {
 
       {error && <p className="error">{error}</p>}
 
-      <div className="calendar-container">
-        <div className="calendar-nav">
-          <button onClick={prevMonth}>&lt;</button>
-          <span>{currentMonth.getFullYear()}년 {currentMonth.getMonth() + 1}월</span>
-          <button onClick={nextMonth}>&gt;</button>
-          <button className="today-btn" onClick={goToToday}>오늘</button>
-        </div>
-        <div className="calendar-grid">
-          {renderCalendar()}
-        </div>
-      </div>
-
-      <div className="selected-date">
-        <h2>{formatDisplayDate(selectedDate)}</h2>
-      </div>
-
-      <form className="todo-form" onSubmit={addTodo}>
-        <div className="todo-input-row">
-          <input
-            type="text"
-            value={newTodo}
-            onChange={(e) => setNewTodo(e.target.value)}
-            placeholder="할 일을 입력하세요"
-          />
-          <label className="image-btn">
-            📎
-            <input type="file" accept="image/*" onChange={handleImageChange} hidden />
-          </label>
-          <button type="submit" disabled={uploading}>
-            {uploading ? '업로드 중...' : '추가'}
-          </button>
-        </div>
-        {imagePreview && (
-          <div className="image-preview">
-            <img src={imagePreview} alt="미리보기" />
-            <button type="button" onClick={clearImage}>✕</button>
+      <div className="main-content">
+        <div className="left-panel">
+          <div className="calendar-container">
+            <div className="calendar-nav">
+              <button onClick={prevMonth}>&lt;</button>
+              <span>{currentMonth.getFullYear()}년 {currentMonth.getMonth() + 1}월</span>
+              <button onClick={nextMonth}>&gt;</button>
+              <button className="today-btn" onClick={goToToday}>오늘</button>
+            </div>
+            <div className="calendar-grid">
+              {renderCalendar()}
+            </div>
           </div>
-        )}
-      </form>
+        </div>
 
-      {loading ? (
-        <p className="loading">로딩 중...</p>
-      ) : (
-        <ul className="todo-list">
-          {todos.length === 0 ? (
-            <li className="no-todos">이 날짜에 등록된 할 일이 없습니다.</li>
+        <div className="right-panel">
+          <div className="selected-date">
+            <h2>{formatDisplayDate(selectedDate)}</h2>
+          </div>
+
+          <form className="todo-form" onSubmit={addTodo}>
+            <div className="todo-input-row">
+              <input
+                type="text"
+                value={newTodo}
+                onChange={(e) => setNewTodo(e.target.value)}
+                placeholder="할 일을 입력하세요"
+              />
+              <label className="image-btn">
+                📎
+                <input type="file" accept="image/*" onChange={handleImageChange} hidden />
+              </label>
+              <button type="submit" disabled={uploading}>
+                {uploading ? '업로드 중...' : '추가'}
+              </button>
+            </div>
+            {imagePreview && (
+              <div className="image-preview">
+                <img src={imagePreview} alt="미리보기" />
+                <button type="button" onClick={clearImage}>✕</button>
+              </div>
+            )}
+          </form>
+
+          {loading ? (
+            <p className="loading">로딩 중...</p>
           ) : (
-            todos.map(todo => (
-              <li key={todo.id} className={`todo-item ${todo.completed ? 'completed' : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={todo.completed}
-                  onChange={() => toggleTodo(todo.id, todo.completed)}
-                />
-                <div className="todo-content">
-                  <span>{todo.title}</span>
-                  {todo.image_url && (
-                    <img
-                      className="todo-image"
-                      src={todo.image_url}
-                      alt="첨부 이미지"
-                      onClick={() => window.open(todo.image_url, '_blank')}
+            <ul className="todo-list">
+              {todos.length === 0 ? (
+                <li className="no-todos">이 날짜에 등록된 할 일이 없습니다.</li>
+              ) : (
+                todos.map(todo => (
+                  <li key={todo.id} className={`todo-item ${todo.completed ? 'completed' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={todo.completed}
+                      onChange={() => toggleTodo(todo.id, todo.completed)}
                     />
-                  )}
-                </div>
-                <button onClick={() => deleteTodo(todo.id)}>삭제</button>
-              </li>
-            ))
+                    <div className="todo-content">
+                      <span>{todo.title}</span>
+                      {todo.image_url && (
+                        <img
+                          className="todo-image"
+                          src={todo.image_url}
+                          alt="첨부 이미지"
+                          onClick={() => window.open(todo.image_url, '_blank')}
+                        />
+                      )}
+                    </div>
+                    <button onClick={() => deleteTodo(todo.id)}>삭제</button>
+                  </li>
+                ))
+              )}
+            </ul>
           )}
-        </ul>
-      )}
+        </div>
+      </div>
     </div>
   )
 }
