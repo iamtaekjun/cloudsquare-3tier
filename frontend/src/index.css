@@ -375,9 +375,13 @@ h1 {
   box-shadow: 0 4px 16px rgba(45, 90, 71, 0.1);
 }
 
-.todo-item.completed span {
+.todo-item.completed .todo-title {
   text-decoration: line-through;
   color: #9cb8a8;
+}
+
+.todo-item.completed .todo-meta {
+  opacity: 0.5;
 }
 
 .todo-item input[type="checkbox"] {
@@ -392,12 +396,40 @@ h1 {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
-.todo-content span {
+.todo-title {
   font-size: 15px;
   color: #3d6b54;
+}
+
+.todo-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.todo-time,
+.todo-notify {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #7a9c8a;
+  background: rgba(124, 184, 153, 0.1);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.todo-time svg,
+.todo-notify svg {
+  flex-shrink: 0;
+}
+
+.todo-notify {
+  color: #7b9cc9;
+  background: rgba(123, 156, 201, 0.1);
 }
 
 .todo-image {

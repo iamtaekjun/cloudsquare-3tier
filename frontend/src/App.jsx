@@ -461,7 +461,27 @@ function App() {
                       onChange={() => toggleTodo(todo.id, todo.completed)}
                     />
                     <div className="todo-content">
-                      <span>{todo.title}</span>
+                      <span className="todo-title">{todo.title}</span>
+                      <div className="todo-meta">
+                        {todo.due_time && (
+                          <span className="todo-time">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12">
+                              <circle cx="12" cy="12" r="10"/>
+                              <polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                            {todo.due_time.slice(0, 5)}
+                          </span>
+                        )}
+                        {todo.notify_email && (
+                          <span className="todo-notify">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12">
+                              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                              <polyline points="22,6 12,13 2,6"/>
+                            </svg>
+                            알림
+                          </span>
+                        )}
+                      </div>
                       {todo.image_url && (
                         <img
                           className="todo-image"
