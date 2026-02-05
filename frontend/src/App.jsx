@@ -114,15 +114,23 @@ function AuthForm({ onLogin }) {
 function App() {
   const [user, setUserState] = useState(getUser())
   const [todos, setTodos] = useState([])
-  const [newTodo, setNewTodo] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [calendarData, setCalendarData] = useState({})
-  const [imageFile, setImageFile] = useState(null)
-  const [imagePreview, setImagePreview] = useState(null)
   const [uploading, setUploading] = useState(false)
+
+  // 모달 관련 상태
+  const [showModal, setShowModal] = useState(false)
+  const [modalData, setModalData] = useState({
+    title: '',
+    dueTime: '',
+    notifyEmail: false,
+    notifyMinutes: 30,
+    imageFile: null,
+    imagePreview: null
+  })
 
   const handleLogin = (userData) => {
     setUserState(userData)
@@ -205,19 +213,49 @@ function App() {
     return <AuthForm onLogin={handleLogin} />
   }
 
-  // 이미지 선택
-  const handleImageChange = (e) => {
+  // 모달 열기
+  const openModal = () => {
+    setModalData({
+      title: '',
+      dueTime: '',
+      notifyEmail: false,
+      notifyMinutes: 30,
+      imageFile: null,
+      imagePreview: null
+    })
+    setShowModal(true)
+  }
+
+  // 모달 닫기
+  const closeModal = () => {
+    if (modalData.imagePreview) {
+      URL.revokeObjectURL(modalData.imagePreview)
+    }
+    setShowModal(false)
+  }
+
+  // 모달 내 이미지 선택
+  const handleModalImageChange = (e) => {
     const file = e.target.files[0]
     if (file) {
-      setImageFile(file)
-      setImagePreview(URL.createObjectURL(file))
+      setModalData(prev => ({
+        ...prev,
+        imageFile: file,
+        imagePreview: URL.createObjectURL(file)
+      }))
     }
   }
 
-  // 이미지 제거
-  const clearImage = () => {
-    setImageFile(null)
-    setImagePreview(null)
+  // 모달 내 이미지 제거
+  const clearModalImage = () => {
+    if (modalData.imagePreview) {
+      URL.revokeObjectURL(modalData.imagePreview)
+    }
+    setModalData(prev => ({
+      ...prev,
+      imageFile: null,
+      imagePreview: null
+    }))
   }
 
   // Presigned URL로 이미지 업로드
@@ -235,28 +273,33 @@ function App() {
     return imageUrl
   }
 
-  // Todo 추가
-  const addTodo = async (e) => {
-    e.preventDefault()
-    if (!newTodo.trim()) return
+  // Todo 추가 (모달에서)
+  const addTodo = async () => {
+    if (!modalData.title.trim()) return
 
     try {
       setUploading(true)
       let imageUrl = null
-      if (imageFile) {
-        imageUrl = await uploadImage(imageFile)
+      if (modalData.imageFile) {
+        imageUrl = await uploadImage(modalData.imageFile)
       }
 
       const res = await authFetch(`${API_URL}/todos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: newTodo, due_date: formatDate(selectedDate), image_url: imageUrl })
+        body: JSON.stringify({
+          title: modalData.title,
+          due_date: formatDate(selectedDate),
+          due_time: modalData.dueTime || null,
+          image_url: imageUrl,
+          notify_email: modalData.notifyEmail,
+          notify_minutes: modalData.notifyEmail ? modalData.notifyMinutes : null
+        })
       })
       if (!res.ok) throw new Error('Failed to add')
       const todo = await res.json()
       setTodos([todo, ...todos])
-      setNewTodo('')
-      clearImage()
+      closeModal()
       fetchCalendarData(currentMonth.getFullYear(), currentMonth.getMonth() + 1)
     } catch (err) {
       setError('할 일 추가에 실패했습니다.')
@@ -394,31 +437,14 @@ function App() {
         <div className="right-panel">
           <div className="selected-date">
             <h2>{formatDisplayDate(selectedDate)}</h2>
+            <button className="add-todo-btn" onClick={openModal}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              할 일 추가
+            </button>
           </div>
-
-          <form className="todo-form" onSubmit={addTodo}>
-            <div className="todo-input-row">
-              <input
-                type="text"
-                value={newTodo}
-                onChange={(e) => setNewTodo(e.target.value)}
-                placeholder="할 일을 입력하세요"
-              />
-              <label className="image-btn">
-                📎
-                <input type="file" accept="image/*" onChange={handleImageChange} hidden />
-              </label>
-              <button type="submit" disabled={uploading}>
-                {uploading ? '업로드 중...' : '추가'}
-              </button>
-            </div>
-            {imagePreview && (
-              <div className="image-preview">
-                <img src={imagePreview} alt="미리보기" />
-                <button type="button" onClick={clearImage}>✕</button>
-              </div>
-            )}
-          </form>
 
           {loading ? (
             <p className="loading">로딩 중...</p>
@@ -453,6 +479,98 @@ function App() {
           )}
         </div>
       </div>
+
+      {/* Todo 추가 모달 */}
+      {showModal && (
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>할 일 추가</h3>
+              <button className="modal-close" onClick={closeModal}>&times;</button>
+            </div>
+
+            <div className="modal-body">
+              <div className="form-group">
+                <label>할 일</label>
+                <input
+                  type="text"
+                  value={modalData.title}
+                  onChange={e => setModalData(prev => ({ ...prev, title: e.target.value }))}
+                  placeholder="할 일을 입력하세요"
+                  autoFocus
+                />
+              </div>
+
+              <div className="form-group">
+                <label>시간 설정 (선택)</label>
+                <input
+                  type="time"
+                  value={modalData.dueTime}
+                  onChange={e => setModalData(prev => ({ ...prev, dueTime: e.target.value }))}
+                />
+              </div>
+
+              <div className="modal-image-section">
+                <label className="modal-image-btn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                    <polyline points="21 15 16 10 5 21"/>
+                  </svg>
+                  이미지 첨부
+                  <input type="file" accept="image/*" onChange={handleModalImageChange} hidden />
+                </label>
+                {modalData.imagePreview && (
+                  <div className="modal-image-preview">
+                    <img src={modalData.imagePreview} alt="미리보기" />
+                    <button type="button" onClick={clearModalImage}>&times;</button>
+                  </div>
+                )}
+              </div>
+
+              <div className="toggle-group">
+                <span>이메일 알림 받기</span>
+                <label className="toggle-switch">
+                  <input
+                    type="checkbox"
+                    checked={modalData.notifyEmail}
+                    onChange={e => setModalData(prev => ({ ...prev, notifyEmail: e.target.checked }))}
+                  />
+                  <span className="toggle-slider"></span>
+                </label>
+              </div>
+
+              {modalData.notifyEmail && modalData.dueTime && (
+                <div className="notify-options">
+                  <label>알림 시간</label>
+                  <select
+                    value={modalData.notifyMinutes}
+                    onChange={e => setModalData(prev => ({ ...prev, notifyMinutes: Number(e.target.value) }))}
+                  >
+                    <option value={5}>5분 전</option>
+                    <option value={10}>10분 전</option>
+                    <option value={15}>15분 전</option>
+                    <option value={30}>30분 전</option>
+                    <option value={60}>1시간 전</option>
+                    <option value={1440}>하루 전</option>
+                  </select>
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn-cancel" onClick={closeModal}>취소</button>
+              <button
+                className="btn-submit"
+                onClick={addTodo}
+                disabled={!modalData.title.trim() || uploading}
+              >
+                {uploading ? '추가 중...' : '추가하기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -202,7 +202,9 @@ h1 {
 
 /* Selected Date */
 .selected-date {
-  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 20px;
 }
 
@@ -210,6 +212,31 @@ h1 {
   font-size: 20px;
   color: #2d5a47;
   font-weight: 600;
+}
+
+.add-todo-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: #7cb899;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.add-todo-btn:hover {
+  background: #5fa37d;
+  transform: translateY(-1px);
+}
+
+.add-todo-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 /* Todo Form */
@@ -246,18 +273,25 @@ h1 {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 2px solid #d4e8dc;
-  border-radius: 12px;
+  width: 44px;
+  height: 44px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 20px;
   transition: all 0.2s ease;
+  color: #9cb8a8;
+  flex-shrink: 0;
 }
 
 .image-btn:hover {
-  background: #e8f5ec;
-  border-color: #7cb899;
+  background: rgba(124, 184, 153, 0.1);
+  color: #7cb899;
+}
+
+.image-btn svg {
+  width: 20px;
+  height: 20px;
 }
 
 .todo-form button {
@@ -567,4 +601,291 @@ h1 {
 .user-info button:hover {
   background: rgba(90, 125, 109, 0.2);
   color: #2d5a47;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal {
+  background: white;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(45, 90, 71, 0.2);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 24px 0;
+}
+
+.modal-header h3 {
+  font-size: 20px;
+  color: #2d5a47;
+  font-weight: 600;
+  margin: 0;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #9cb8a8;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.modal-close:hover {
+  color: #5a7d6d;
+}
+
+.modal-body {
+  padding: 24px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #5a7d6d;
+  margin-bottom: 8px;
+}
+
+.form-group input[type="text"],
+.form-group input[type="time"],
+.form-group select {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid #d4e8dc;
+  border-radius: 12px;
+  font-size: 15px;
+  outline: none;
+  transition: all 0.2s ease;
+  background: #fafcfb;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  border-color: #7cb899;
+  box-shadow: 0 0 0 3px rgba(124, 184, 153, 0.15);
+  background: white;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-row .form-group {
+  margin-bottom: 0;
+}
+
+/* Toggle Switch */
+.toggle-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background: #f8fbf9;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.toggle-group span {
+  font-size: 15px;
+  color: #3d6b54;
+}
+
+.toggle-switch {
+  position: relative;
+  width: 52px;
+  height: 28px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #d4e8dc;
+  border-radius: 28px;
+  transition: 0.3s;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 22px;
+  width: 22px;
+  left: 3px;
+  bottom: 3px;
+  background: white;
+  border-radius: 50%;
+  transition: 0.3s;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background: #7cb899;
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+  transform: translateX(24px);
+}
+
+.notify-options {
+  padding: 16px;
+  background: #f8fbf9;
+  border-radius: 12px;
+  margin-top: -8px;
+}
+
+.notify-options label {
+  font-size: 14px;
+  color: #5a7d6d;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.notify-options select {
+  width: 100%;
+  padding: 12px 14px;
+  border: 2px solid #d4e8dc;
+  border-radius: 10px;
+  font-size: 14px;
+  outline: none;
+  background: white;
+}
+
+/* Image preview in modal */
+.modal-image-section {
+  margin-bottom: 20px;
+}
+
+.modal-image-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  background: #f8fbf9;
+  border: 2px dashed #d4e8dc;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  color: #5a7d6d;
+  font-size: 14px;
+}
+
+.modal-image-btn:hover {
+  border-color: #7cb899;
+  background: #f0f7f4;
+}
+
+.modal-image-btn svg {
+  width: 20px;
+  height: 20px;
+  color: #9cb8a8;
+}
+
+.modal-image-preview {
+  position: relative;
+  margin-top: 12px;
+}
+
+.modal-image-preview img {
+  width: 100%;
+  max-height: 200px;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+.modal-image-preview button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-footer {
+  padding: 0 24px 24px;
+  display: flex;
+  gap: 12px;
+}
+
+.modal-footer button {
+  flex: 1;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modal-footer .btn-cancel {
+  background: #f0f7f4;
+  color: #5a7d6d;
+  border: none;
+}
+
+.modal-footer .btn-cancel:hover {
+  background: #e0ede6;
+}
+
+.modal-footer .btn-submit {
+  background: #7cb899;
+  color: white;
+  border: none;
+}
+
+.modal-footer .btn-submit:hover {
+  background: #5fa37d;
+}
+
+.modal-footer .btn-submit:disabled {
+  background: #b8d4c4;
+  cursor: not-allowed;
 }
