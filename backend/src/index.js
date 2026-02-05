@@ -8,6 +8,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import multer from 'multer'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
+// import cron from 'node-cron'  // TODO: 이메일 알림 기능 구현 시 활성화
 
 dotenv.config()
 
@@ -454,6 +455,10 @@ app.delete('/api/todos/:id', authenticateToken, async (req, res) => {
     res.status(500).json({ error: 'Failed to delete todo' })
   }
 })
+
+// TODO: 이메일 알림 기능 (나중에 구현)
+// - nodemailer + Gmail SMTP 또는 NCP Cloud Outbound Mailer 연동
+// - 스케줄러로 알림 시간에 맞춰 이메일 발송
 
 // Start server
 initDB().then(() => {
