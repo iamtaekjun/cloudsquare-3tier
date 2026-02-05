@@ -8,7 +8,8 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import multer from 'multer'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
-// import cron from 'node-cron'  // TODO: 이메일 알림 기능 구현 시 활성화
+import cron from 'node-cron'
+import nodemailer from 'nodemailer'
 
 dotenv.config()
 
@@ -456,13 +457,119 @@ app.delete('/api/todos/:id', authenticateToken, async (req, res) => {
   }
 })
 
-// TODO: 이메일 알림 기능 (나중에 구현)
-// - nodemailer + Gmail SMTP 또는 NCP Cloud Outbound Mailer 연동
-// - 스케줄러로 알림 시간에 맞춰 이메일 발송
+// 이메일 발송 설정 (Gmail SMTP)
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD
+  }
+})
+
+// 이메일 발송 함수
+async function sendEmailNotification(toEmail, todoTitle, dueDate, dueTime) {
+  const mailOptions = {
+    from: `"Todo Calendar" <${process.env.GMAIL_USER}>`,
+    to: toEmail,
+    subject: `[Todo 알림] ${todoTitle}`,
+    html: `
+      <div style="font-family: 'Apple SD Gothic Neo', Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; background: linear-gradient(135deg, #f0f7f4 0%, #e8f5e9 100%);">
+        <h2 style="color: #2d5a47; margin-bottom: 20px;">Todo 알림</h2>
+        <div style="background: white; padding: 24px; border-radius: 12px; box-shadow: 0 2px 8px rgba(45, 90, 71, 0.1);">
+          <p style="font-size: 16px; color: #3d6b54; margin: 0 0 12px 0;"><strong>할 일:</strong> ${todoTitle}</p>
+          <p style="font-size: 16px; color: #3d6b54; margin: 0;"><strong>일정:</strong> ${dueDate} ${dueTime || ''}</p>
+        </div>
+        <p style="color: #7a9c8a; margin-top: 20px; font-size: 13px; text-align: center;">
+          이 알림은 설정하신 시간에 맞춰 자동으로 발송되었습니다.
+        </p>
+      </div>
+    `
+  }
+
+  try {
+    const info = await transporter.sendMail(mailOptions)
+    console.log('Email sent:', info.messageId)
+    return info
+  } catch (err) {
+    console.error('Email send failed:', err)
+    throw err
+  }
+}
+
+// 이메일 알림 스케줄러 (매분 실행)
+function startNotificationScheduler() {
+  cron.schedule('* * * * *', async () => {
+    try {
+      const now = new Date()
+      const currentDate = now.toISOString().split('T')[0]
+      const currentHours = String(now.getHours()).padStart(2, '0')
+      const currentMinutes = String(now.getMinutes()).padStart(2, '0')
+      const currentTime = `${currentHours}:${currentMinutes}`
+
+      // 알림이 필요한 Todo 조회
+      const [todos] = await pool.execute(`
+        SELECT t.*, u.email as user_email
+        FROM todos t
+        JOIN users u ON t.user_id = u.id
+        WHERE t.notify_email = 1
+          AND t.notified = 0
+          AND t.due_date = ?
+          AND t.due_time IS NOT NULL
+      `, [currentDate])
+
+      for (const todo of todos) {
+        // 알림 시간 계산 (due_time - notify_minutes)
+        const [hours, minutes] = todo.due_time.split(':').map(Number)
+        const dueDateTime = new Date(now)
+        dueDateTime.setHours(hours, minutes, 0, 0)
+
+        const notifyTime = new Date(dueDateTime.getTime() - (todo.notify_minutes || 0) * 60 * 1000)
+        const notifyHours = String(notifyTime.getHours()).padStart(2, '0')
+        const notifyMinutes = String(notifyTime.getMinutes()).padStart(2, '0')
+        const notifyTimeStr = `${notifyHours}:${notifyMinutes}`
+
+        // 현재 시간이 알림 시간과 같으면 발송
+        if (currentTime === notifyTimeStr) {
+          try {
+            // 복호화된 title 가져오기
+            let decryptedTitle
+            try {
+              decryptedTitle = await kmsDecrypt(todo.title)
+            } catch {
+              decryptedTitle = todo.title
+            }
+
+            await sendEmailNotification(
+              todo.user_email,
+              decryptedTitle,
+              todo.due_date,
+              todo.due_time.slice(0, 5)
+            )
+
+            // 발송 완료 표시
+            await pool.execute('UPDATE todos SET notified = 1 WHERE id = ?', [todo.id])
+            console.log(`Notification sent for todo ${todo.id} to ${todo.user_email}`)
+          } catch (err) {
+            console.error(`Failed to send notification for todo ${todo.id}:`, err)
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Notification scheduler error:', err)
+    }
+  })
+  console.log('Email notification scheduler started')
+}
 
 // Start server
 initDB().then(() => {
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`)
+    // Gmail 설정이 있을 때만 스케줄러 시작
+    if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+      startNotificationScheduler()
+    } else {
+      console.log('Email notification disabled (GMAIL_USER or GMAIL_APP_PASSWORD not set)')
+    }
   })
 })
