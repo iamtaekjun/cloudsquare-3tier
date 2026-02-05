@@ -6,8 +6,12 @@ import mysql from 'mysql2/promise'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import multer from 'multer'
+import bcrypt from 'bcrypt'
+import jwt from 'jsonwebtoken'
 
 dotenv.config()
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production'
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -98,6 +102,17 @@ const pool = mysql.createPool({
 // Initialize database table
 async function initDB() {
   try {
+    // users 테이블 생성
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        name VARCHAR(100) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+
     await pool.execute(`
       CREATE TABLE IF NOT EXISTS todos (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -120,15 +135,109 @@ async function initDB() {
     if (cols.length === 0) {
       await pool.execute('ALTER TABLE todos ADD COLUMN image_url VARCHAR(512) DEFAULT NULL')
     }
+    // Add user_id column if not exists
+    const [userIdCol] = await pool.execute(
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'todos' AND COLUMN_NAME = 'user_id'`,
+      [process.env.DB_NAME]
+    )
+    if (userIdCol.length === 0) {
+      await pool.execute('ALTER TABLE todos ADD COLUMN user_id INT')
+    }
     console.log('Database initialized')
   } catch (err) {
     console.error('Database initialization failed:', err.message)
   }
 }
 
+// JWT 인증 미들웨어
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization']
+  const token = authHeader && authHeader.split(' ')[1]
+
+  if (!token) {
+    return res.status(401).json({ error: '로그인이 필요합니다.' })
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ error: '유효하지 않은 토큰입니다.' })
+    }
+    req.user = user
+    next()
+  })
+}
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
+})
+
+// 회원가입
+app.post('/api/auth/register', async (req, res) => {
+  const { email, password, name } = req.body
+
+  if (!email || !password || !name) {
+    return res.status(400).json({ error: '이메일, 비밀번호, 이름을 모두 입력해주세요.' })
+  }
+
+  try {
+    // 이메일 중복 확인
+    const [existing] = await pool.execute('SELECT id FROM users WHERE email = ?', [email])
+    if (existing.length > 0) {
+      return res.status(409).json({ error: '이미 사용 중인 이메일입니다.' })
+    }
+
+    // 비밀번호 해시
+    const hashedPassword = await bcrypt.hash(password, 10)
+
+    // 사용자 생성
+    const [result] = await pool.execute(
+      'INSERT INTO users (email, password, name) VALUES (?, ?, ?)',
+      [email, hashedPassword, name]
+    )
+
+    const token = jwt.sign({ id: result.insertId, email, name }, JWT_SECRET, { expiresIn: '7d' })
+
+    res.status(201).json({ token, user: { id: result.insertId, email, name } })
+  } catch (err) {
+    console.error('Register error:', err)
+    res.status(500).json({ error: '회원가입에 실패했습니다.' })
+  }
+})
+
+// 로그인
+app.post('/api/auth/login', async (req, res) => {
+  const { email, password } = req.body
+
+  if (!email || !password) {
+    return res.status(400).json({ error: '이메일과 비밀번호를 입력해주세요.' })
+  }
+
+  try {
+    const [users] = await pool.execute('SELECT * FROM users WHERE email = ?', [email])
+    if (users.length === 0) {
+      return res.status(401).json({ error: '이메일 또는 비밀번호가 올바르지 않습니다.' })
+    }
+
+    const user = users[0]
+    const validPassword = await bcrypt.compare(password, user.password)
+    if (!validPassword) {
+      return res.status(401).json({ error: '이메일 또는 비밀번호가 올바르지 않습니다.' })
+    }
+
+    const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '7d' })
+
+    res.json({ token, user: { id: user.id, email: user.email, name: user.name } })
+  } catch (err) {
+    console.error('Login error:', err)
+    res.status(500).json({ error: '로그인에 실패했습니다.' })
+  }
+})
+
+// 내 정보 조회
+app.get('/api/auth/me', authenticateToken, async (req, res) => {
+  res.json({ user: req.user })
 })
 
 // Presigned URL 발급 (이미지 업로드용)
@@ -177,14 +286,15 @@ app.post('/api/upload-direct', upload.single('image'), async (req, res) => {
 })
 
 // Get all todos (with optional date filter)
-app.get('/api/todos', async (req, res) => {
+app.get('/api/todos', authenticateToken, async (req, res) => {
   try {
     const { date } = req.query
-    let query = 'SELECT * FROM todos'
-    let params = []
+    const userId = req.user.id
+    let query = 'SELECT * FROM todos WHERE user_id = ?'
+    let params = [userId]
 
     if (date) {
-      query += ' WHERE due_date = ?'
+      query += ' AND due_date = ?'
       params.push(date)
     }
     query += ' ORDER BY created_at DESC'
@@ -201,15 +311,16 @@ app.get('/api/todos', async (req, res) => {
 })
 
 // Get todos count by date (for calendar dots)
-app.get('/api/todos/calendar', async (req, res) => {
+app.get('/api/todos/calendar', authenticateToken, async (req, res) => {
   try {
     const { year, month } = req.query
+    const userId = req.user.id
     const [rows] = await pool.execute(
       `SELECT due_date, COUNT(*) as count, SUM(completed) as completed_count
        FROM todos
-       WHERE YEAR(due_date) = ? AND MONTH(due_date) = ?
+       WHERE user_id = ? AND YEAR(due_date) = ? AND MONTH(due_date) = ?
        GROUP BY due_date`,
-      [year, month]
+      [userId, year, month]
     )
     res.json(rows)
   } catch (err) {
@@ -219,8 +330,9 @@ app.get('/api/todos/calendar', async (req, res) => {
 })
 
 // Create todo
-app.post('/api/todos', async (req, res) => {
+app.post('/api/todos', authenticateToken, async (req, res) => {
   const { title, due_date, image_url } = req.body
+  const userId = req.user.id
   if (!title || !title.trim()) {
     return res.status(400).json({ error: 'Title is required' })
   }
@@ -229,8 +341,8 @@ app.post('/api/todos', async (req, res) => {
     const dateValue = due_date || new Date().toISOString().split('T')[0]
     const encryptedTitle = await kmsEncrypt(title.trim())
     const [result] = await pool.execute(
-      'INSERT INTO todos (title, due_date, image_url) VALUES (?, ?, ?)',
-      [encryptedTitle, dateValue, image_url || null]
+      'INSERT INTO todos (title, due_date, image_url, user_id) VALUES (?, ?, ?, ?)',
+      [encryptedTitle, dateValue, image_url || null, userId]
     )
     const [rows] = await pool.execute('SELECT * FROM todos WHERE id = ?', [result.insertId])
     rows[0].title = await kmsDecrypt(rows[0].title)
@@ -242,11 +354,18 @@ app.post('/api/todos', async (req, res) => {
 })
 
 // Update todo
-app.patch('/api/todos/:id', async (req, res) => {
+app.patch('/api/todos/:id', authenticateToken, async (req, res) => {
   const { id } = req.params
   const { title, completed, due_date, image_url } = req.body
+  const userId = req.user.id
 
   try {
+    // 본인 소유 확인
+    const [existing] = await pool.execute('SELECT * FROM todos WHERE id = ? AND user_id = ?', [id, userId])
+    if (existing.length === 0) {
+      return res.status(404).json({ error: 'Todo not found' })
+    }
+
     const updates = []
     const values = []
 
@@ -271,13 +390,10 @@ app.patch('/api/todos/:id', async (req, res) => {
       return res.status(400).json({ error: 'No fields to update' })
     }
 
-    values.push(id)
-    await pool.execute(`UPDATE todos SET ${updates.join(', ')} WHERE id = ?`, values)
+    values.push(id, userId)
+    await pool.execute(`UPDATE todos SET ${updates.join(', ')} WHERE id = ? AND user_id = ?`, values)
 
     const [rows] = await pool.execute('SELECT * FROM todos WHERE id = ?', [id])
-    if (rows.length === 0) {
-      return res.status(404).json({ error: 'Todo not found' })
-    }
     try { rows[0].title = await kmsDecrypt(rows[0].title) } catch { /* 평문 호환 */ }
     res.json(rows[0])
   } catch (err) {
@@ -287,11 +403,12 @@ app.patch('/api/todos/:id', async (req, res) => {
 })
 
 // Delete todo
-app.delete('/api/todos/:id', async (req, res) => {
+app.delete('/api/todos/:id', authenticateToken, async (req, res) => {
   const { id } = req.params
+  const userId = req.user.id
 
   try {
-    const [result] = await pool.execute('DELETE FROM todos WHERE id = ?', [id])
+    const [result] = await pool.execute('DELETE FROM todos WHERE id = ? AND user_id = ?', [id, userId])
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Todo not found' })
     }
