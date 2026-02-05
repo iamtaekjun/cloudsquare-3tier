@@ -144,6 +144,42 @@ async function initDB() {
     if (userIdCol.length === 0) {
       await pool.execute('ALTER TABLE todos ADD COLUMN user_id INT')
     }
+    // Add due_time column if not exists
+    const [dueTimeCol] = await pool.execute(
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'todos' AND COLUMN_NAME = 'due_time'`,
+      [process.env.DB_NAME]
+    )
+    if (dueTimeCol.length === 0) {
+      await pool.execute('ALTER TABLE todos ADD COLUMN due_time TIME DEFAULT NULL')
+    }
+    // Add notify_email column if not exists
+    const [notifyEmailCol] = await pool.execute(
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'todos' AND COLUMN_NAME = 'notify_email'`,
+      [process.env.DB_NAME]
+    )
+    if (notifyEmailCol.length === 0) {
+      await pool.execute('ALTER TABLE todos ADD COLUMN notify_email BOOLEAN DEFAULT FALSE')
+    }
+    // Add notify_minutes column if not exists
+    const [notifyMinutesCol] = await pool.execute(
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'todos' AND COLUMN_NAME = 'notify_minutes'`,
+      [process.env.DB_NAME]
+    )
+    if (notifyMinutesCol.length === 0) {
+      await pool.execute('ALTER TABLE todos ADD COLUMN notify_minutes INT DEFAULT NULL')
+    }
+    // Add notified column if not exists (알림 발송 여부)
+    const [notifiedCol] = await pool.execute(
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'todos' AND COLUMN_NAME = 'notified'`,
+      [process.env.DB_NAME]
+    )
+    if (notifiedCol.length === 0) {
+      await pool.execute('ALTER TABLE todos ADD COLUMN notified BOOLEAN DEFAULT FALSE')
+    }
     console.log('Database initialized')
   } catch (err) {
     console.error('Database initialization failed:', err.message)
@@ -331,7 +367,7 @@ app.get('/api/todos/calendar', authenticateToken, async (req, res) => {
 
 // Create todo
 app.post('/api/todos', authenticateToken, async (req, res) => {
-  const { title, due_date, image_url } = req.body
+  const { title, due_date, due_time, image_url, notify_email, notify_minutes } = req.body
   const userId = req.user.id
   if (!title || !title.trim()) {
     return res.status(400).json({ error: 'Title is required' })
@@ -341,8 +377,8 @@ app.post('/api/todos', authenticateToken, async (req, res) => {
     const dateValue = due_date || new Date().toISOString().split('T')[0]
     const encryptedTitle = await kmsEncrypt(title.trim())
     const [result] = await pool.execute(
-      'INSERT INTO todos (title, due_date, image_url, user_id) VALUES (?, ?, ?, ?)',
-      [encryptedTitle, dateValue, image_url || null, userId]
+      'INSERT INTO todos (title, due_date, due_time, image_url, user_id, notify_email, notify_minutes) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [encryptedTitle, dateValue, due_time || null, image_url || null, userId, notify_email || false, notify_minutes || null]
     )
     const [rows] = await pool.execute('SELECT * FROM todos WHERE id = ?', [result.insertId])
     rows[0].title = await kmsDecrypt(rows[0].title)
