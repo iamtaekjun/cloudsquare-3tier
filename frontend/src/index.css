@@ -6,7 +6,7 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #f5f5f5;
+  background: linear-gradient(135deg, #f0f7f4 0%, #e8f5e9 100%);
   min-height: 100vh;
 }
 
@@ -18,17 +18,20 @@ body {
 
 h1 {
   text-align: center;
-  color: #333;
+  color: #2d5a47;
   margin-bottom: 30px;
+  font-weight: 600;
 }
 
 /* Calendar Styles */
 .calendar-container {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 20px rgba(45, 90, 71, 0.08);
+  border: 1px solid rgba(45, 90, 71, 0.06);
 }
 
 .calendar-nav {
@@ -44,30 +47,34 @@ h1 {
   font-weight: 600;
   min-width: 150px;
   text-align: center;
+  color: #2d5a47;
 }
 
 .calendar-nav button {
   padding: 8px 16px;
-  background: #007bff;
-  color: white;
+  background: #a8d5ba;
+  color: #2d5a47;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
-  transition: background 0.2s;
+  font-weight: 500;
+  transition: all 0.2s ease;
 }
 
 .calendar-nav button:hover {
-  background: #0056b3;
+  background: #8fc9a3;
+  transform: translateY(-1px);
 }
 
 .calendar-nav .today-btn {
-  background: #28a745;
+  background: #7cb899;
+  color: white;
   margin-left: 10px;
 }
 
 .calendar-nav .today-btn:hover {
-  background: #1e7e34;
+  background: #5fa37d;
 }
 
 .calendar-grid {
@@ -80,16 +87,16 @@ h1 {
   text-align: center;
   padding: 10px 0;
   font-weight: 600;
-  font-size: 14px;
-  color: #666;
+  font-size: 13px;
+  color: #5a7d6d;
 }
 
 .calendar-header-cell.sunday {
-  color: #dc3545;
+  color: #c97b7b;
 }
 
 .calendar-header-cell.saturday {
-  color: #007bff;
+  color: #7b9cc9;
 }
 
 .calendar-cell {
@@ -98,15 +105,15 @@ h1 {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   position: relative;
   min-height: 50px;
 }
 
 .calendar-cell:hover:not(.empty) {
-  background: #f0f0f0;
+  background: rgba(168, 213, 186, 0.3);
 }
 
 .calendar-cell.empty {
@@ -116,27 +123,28 @@ h1 {
 .calendar-cell .day-number {
   font-size: 14px;
   font-weight: 500;
+  color: #3d6b54;
 }
 
 .calendar-cell.sunday .day-number {
-  color: #dc3545;
+  color: #c97b7b;
 }
 
 .calendar-cell.saturday .day-number {
-  color: #007bff;
+  color: #7b9cc9;
 }
 
 .calendar-cell.today {
-  background: #e3f2fd;
+  background: rgba(168, 213, 186, 0.4);
 }
 
 .calendar-cell.today .day-number {
-  color: #1976d2;
+  color: #2d5a47;
   font-weight: 700;
 }
 
 .calendar-cell.selected {
-  background: #007bff;
+  background: #7cb899;
 }
 
 .calendar-cell.selected .day-number {
@@ -158,16 +166,16 @@ h1 {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #ff9800;
+  background: #e8b87d;
 }
 
 .todo-indicator .dot.all-done {
-  background: #4caf50;
+  background: #7cb899;
 }
 
 .todo-indicator .count {
   font-size: 10px;
-  color: #666;
+  color: #5a7d6d;
 }
 
 /* Selected Date */
@@ -178,13 +186,13 @@ h1 {
 
 .selected-date h2 {
   font-size: 18px;
-  color: #333;
+  color: #2d5a47;
   font-weight: 500;
 }
 
 /* Todo Form */
 .todo-form {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .todo-input-row {
@@ -194,16 +202,22 @@ h1 {
 
 .todo-form input[type="text"] {
   flex: 1;
-  padding: 12px 16px;
-  border: 2px solid #ddd;
-  border-radius: 8px;
-  font-size: 16px;
+  padding: 14px 18px;
+  border: 2px solid #d4e8dc;
+  border-radius: 12px;
+  font-size: 15px;
   outline: none;
-  transition: border-color 0.2s;
+  transition: all 0.2s ease;
+  background: rgba(255, 255, 255, 0.9);
 }
 
 .todo-form input[type="text"]:focus {
-  border-color: #007bff;
+  border-color: #7cb899;
+  box-shadow: 0 0 0 3px rgba(124, 184, 153, 0.15);
+}
+
+.todo-form input[type="text"]::placeholder {
+  color: #9cb8a8;
 }
 
 .image-btn {
@@ -211,49 +225,53 @@ h1 {
   align-items: center;
   justify-content: center;
   width: 48px;
-  background: #f0f0f0;
-  border: 2px solid #ddd;
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 2px solid #d4e8dc;
+  border-radius: 12px;
   cursor: pointer;
   font-size: 20px;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
 }
 
 .image-btn:hover {
-  background: #e0e0e0;
+  background: #e8f5ec;
+  border-color: #7cb899;
 }
 
 .todo-form button {
-  padding: 12px 24px;
-  background: #007bff;
+  padding: 14px 24px;
+  background: #7cb899;
   color: white;
   border: none;
-  border-radius: 8px;
-  font-size: 16px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 500;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
 }
 
 .todo-form button:hover {
-  background: #0056b3;
+  background: #5fa37d;
+  transform: translateY(-1px);
 }
 
 .todo-form button:disabled {
-  background: #999;
+  background: #b8d4c4;
   cursor: not-allowed;
+  transform: none;
 }
 
 .image-preview {
   position: relative;
-  margin-top: 10px;
+  margin-top: 12px;
   display: inline-block;
 }
 
 .image-preview img {
   max-width: 200px;
   max-height: 150px;
-  border-radius: 8px;
-  border: 2px solid #ddd;
+  border-radius: 12px;
+  border: 2px solid #d4e8dc;
 }
 
 .image-preview button {
@@ -263,7 +281,7 @@ h1 {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: #dc3545;
+  background: #c97b7b;
   color: white;
   border: none;
   cursor: pointer;
@@ -271,6 +289,11 @@ h1 {
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background 0.2s;
+}
+
+.image-preview button:hover {
+  background: #b56a6a;
 }
 
 /* Todo List */
@@ -281,103 +304,121 @@ h1 {
 .todo-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px;
-  background: white;
-  border-radius: 8px;
-  margin-bottom: 10px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  gap: 14px;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
+  border-radius: 14px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 12px rgba(45, 90, 71, 0.06);
+  border: 1px solid rgba(45, 90, 71, 0.06);
+  transition: all 0.2s ease;
+}
+
+.todo-item:hover {
+  box-shadow: 0 4px 16px rgba(45, 90, 71, 0.1);
 }
 
 .todo-item.completed span {
   text-decoration: line-through;
-  color: #999;
+  color: #9cb8a8;
 }
 
 .todo-item input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   cursor: pointer;
   flex-shrink: 0;
+  accent-color: #7cb899;
 }
 
 .todo-content {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .todo-content span {
-  font-size: 16px;
+  font-size: 15px;
+  color: #3d6b54;
 }
 
 .todo-image {
   max-width: 100%;
   max-height: 200px;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: all 0.2s ease;
   object-fit: cover;
 }
 
 .todo-image:hover {
-  opacity: 0.8;
+  opacity: 0.85;
+  transform: scale(1.01);
 }
 
 .todo-item button {
-  padding: 8px 12px;
-  background: #dc3545;
-  color: white;
+  padding: 8px 14px;
+  background: rgba(201, 123, 123, 0.15);
+  color: #c97b7b;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
 }
 
 .todo-item button:hover {
-  background: #c82333;
+  background: #c97b7b;
+  color: white;
 }
 
 .no-todos {
   text-align: center;
-  padding: 30px;
-  color: #999;
-  background: white;
-  border-radius: 8px;
+  padding: 40px;
+  color: #9cb8a8;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 14px;
+  font-size: 15px;
 }
 
 .loading, .error {
   text-align: center;
   padding: 20px;
-  color: #666;
+  color: #5a7d6d;
 }
 
 .error {
-  color: #dc3545;
-  background: #ffebee;
-  border-radius: 8px;
+  color: #c97b7b;
+  background: rgba(201, 123, 123, 0.1);
+  border-radius: 12px;
   margin-bottom: 20px;
+  border: 1px solid rgba(201, 123, 123, 0.2);
 }
 
 /* Auth Styles */
 .auth-container {
   max-width: 400px;
   margin: 80px auto;
-  padding: 40px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  padding: 48px 40px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(45, 90, 71, 0.1);
+  border: 1px solid rgba(45, 90, 71, 0.06);
 }
 
 .auth-container h1 {
-  margin-bottom: 10px;
+  margin-bottom: 8px;
+  color: #2d5a47;
 }
 
 .auth-container p {
   text-align: center;
-  color: #666;
-  margin-bottom: 30px;
+  color: #5a7d6d;
+  margin-bottom: 32px;
 }
 
 .auth-form {
@@ -387,61 +428,81 @@ h1 {
 }
 
 .auth-form input {
-  padding: 14px 16px;
-  border: 2px solid #ddd;
-  border-radius: 8px;
-  font-size: 16px;
+  padding: 16px 18px;
+  border: 2px solid #d4e8dc;
+  border-radius: 12px;
+  font-size: 15px;
   outline: none;
-  transition: border-color 0.2s;
+  transition: all 0.2s ease;
+  background: rgba(255, 255, 255, 0.8);
 }
 
 .auth-form input:focus {
-  border-color: #007bff;
+  border-color: #7cb899;
+  box-shadow: 0 0 0 3px rgba(124, 184, 153, 0.15);
+}
+
+.auth-form input::placeholder {
+  color: #9cb8a8;
 }
 
 .auth-form button {
-  padding: 14px;
-  background: #007bff;
+  padding: 16px;
+  background: #7cb899;
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 12px;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
+  margin-top: 8px;
 }
 
 .auth-form button:hover {
-  background: #0056b3;
+  background: #5fa37d;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(124, 184, 153, 0.3);
 }
 
 .auth-form button:disabled {
-  background: #999;
+  background: #b8d4c4;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .auth-switch {
   text-align: center;
-  margin-top: 20px;
-  color: #666;
+  margin-top: 24px;
+  color: #5a7d6d;
+  font-size: 14px;
 }
 
 .auth-switch button {
   background: none;
   border: none;
-  color: #007bff;
+  color: #5fa37d;
   cursor: pointer;
   font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.auth-switch button:hover {
+  color: #2d5a47;
   text-decoration: underline;
 }
 
 .auth-error {
-  color: #dc3545;
-  background: #ffebee;
-  padding: 12px;
-  border-radius: 8px;
+  color: #c97b7b;
+  background: rgba(201, 123, 123, 0.1);
+  padding: 14px;
+  border-radius: 10px;
   text-align: center;
   font-size: 14px;
+  border: 1px solid rgba(201, 123, 123, 0.2);
 }
 
 /* Header with user info */
@@ -449,34 +510,39 @@ h1 {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
+  margin-bottom: 32px;
 }
 
 .app-header h1 {
   margin-bottom: 0;
+  font-size: 24px;
 }
 
 .user-info {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 
 .user-info span {
-  color: #666;
+  color: #5a7d6d;
   font-size: 14px;
+  font-weight: 500;
 }
 
 .user-info button {
-  padding: 8px 16px;
-  background: #6c757d;
-  color: white;
+  padding: 10px 18px;
+  background: rgba(90, 125, 109, 0.1);
+  color: #5a7d6d;
   border: none;
-  border-radius: 6px;
+  border-radius: 10px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
 }
 
 .user-info button:hover {
-  background: #5a6268;
+  background: rgba(90, 125, 109, 0.2);
+  color: #2d5a47;
 }
