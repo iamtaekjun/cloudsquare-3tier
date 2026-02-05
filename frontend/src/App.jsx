@@ -2,7 +2,117 @@ import { useState, useEffect } from 'react'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
+// 토큰 관리
+const getToken = () => localStorage.getItem('token')
+const setToken = (token) => localStorage.setItem('token', token)
+const removeToken = () => localStorage.removeItem('token')
+const getUser = () => {
+  const user = localStorage.getItem('user')
+  return user ? JSON.parse(user) : null
+}
+const setUser = (user) => localStorage.setItem('user', JSON.stringify(user))
+const removeUser = () => localStorage.removeItem('user')
+
+// 인증 API 요청 헬퍼
+const authFetch = async (url, options = {}) => {
+  const token = getToken()
+  const headers = {
+    ...options.headers,
+  }
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+  return fetch(url, { ...options, headers })
+}
+
+// 로그인/회원가입 컴포넌트
+function AuthForm({ onLogin }) {
+  const [isLogin, setIsLogin] = useState(true)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [name, setName] = useState('')
+  const [error, setError] = useState(null)
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError(null)
+    setLoading(true)
+
+    try {
+      const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register'
+      const body = isLogin ? { email, password } : { email, password, name }
+
+      const res = await fetch(`${API_URL.replace('/api', '')}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || '요청에 실패했습니다.')
+      }
+
+      setToken(data.token)
+      setUser(data.user)
+      onLogin(data.user)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="auth-container">
+      <h1>{isLogin ? '로그인' : '회원가입'}</h1>
+      <p>{isLogin ? '계정에 로그인하세요' : '새 계정을 만드세요'}</p>
+
+      {error && <div className="auth-error">{error}</div>}
+
+      <form className="auth-form" onSubmit={handleSubmit}>
+        {!isLogin && (
+          <input
+            type="text"
+            placeholder="이름"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
+        )}
+        <input
+          type="email"
+          placeholder="이메일"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <input
+          type="password"
+          placeholder="비밀번호"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+        <button type="submit" disabled={loading}>
+          {loading ? '처리 중...' : (isLogin ? '로그인' : '가입하기')}
+        </button>
+      </form>
+
+      <div className="auth-switch">
+        {isLogin ? '계정이 없으신가요? ' : '이미 계정이 있으신가요? '}
+        <button onClick={() => { setIsLogin(!isLogin); setError(null); }}>
+          {isLogin ? '회원가입' : '로그인'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function App() {
+  const [user, setUserState] = useState(getUser())
   const [todos, setTodos] = useState([])
   const [newTodo, setNewTodo] = useState('')
   const [loading, setLoading] = useState(true)
@@ -13,6 +123,23 @@ function App() {
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
   const [uploading, setUploading] = useState(false)
+
+  const handleLogin = (user) => {
+    setUserState(user)
+  }
+
+  const handleLogout = () => {
+    removeToken()
+    removeUser()
+    setUserState(null)
+    setTodos([])
+    setCalendarData({})
+  }
+
+  // 로그인 안 했으면 로그인 폼 보여주기
+  if (!user) {
+    return <AuthForm onLogin={handleLogin} />
+  }
 
   const formatDate = (date) => {
     const year = date.getFullYear()
@@ -34,7 +161,7 @@ function App() {
   // 캘린더 데이터 조회 (월별 Todo 개수)
   const fetchCalendarData = async (year, month) => {
     try {
-      const res = await fetch(`${API_URL}/todos/calendar?year=${year}&month=${month}`)
+      const res = await authFetch(`${API_URL}/todos/calendar?year=${year}&month=${month}`)
       if (!res.ok) throw new Error('Failed to fetch calendar')
       const data = await res.json()
       const mapped = {}
@@ -53,7 +180,7 @@ function App() {
     try {
       setLoading(true)
       const dateStr = formatDate(date)
-      const res = await fetch(`${API_URL}/todos?date=${dateStr}`)
+      const res = await authFetch(`${API_URL}/todos?date=${dateStr}`)
       if (!res.ok) throw new Error('Failed to fetch')
       const data = await res.json()
       setTodos(data)
@@ -115,7 +242,7 @@ function App() {
         imageUrl = await uploadImage(imageFile)
       }
 
-      const res = await fetch(`${API_URL}/todos`, {
+      const res = await authFetch(`${API_URL}/todos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: newTodo, due_date: formatDate(selectedDate), image_url: imageUrl })
@@ -136,7 +263,7 @@ function App() {
   // Todo 완료 토글
   const toggleTodo = async (id, completed) => {
     try {
-      const res = await fetch(`${API_URL}/todos/${id}`, {
+      const res = await authFetch(`${API_URL}/todos/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ completed: !completed })
@@ -153,7 +280,7 @@ function App() {
   // Todo 삭제
   const deleteTodo = async (id) => {
     try {
-      const res = await fetch(`${API_URL}/todos/${id}`, {
+      const res = await authFetch(`${API_URL}/todos/${id}`, {
         method: 'DELETE'
       })
       if (!res.ok) throw new Error('Failed to delete')
@@ -234,7 +361,13 @@ function App() {
 
   return (
     <div className="container">
-      <h1>Todo Calendar</h1>
+      <div className="app-header">
+        <h1>Todo Calendar</h1>
+        <div className="user-info">
+          <span>{user.name}님</span>
+          <button onClick={handleLogout}>로그아웃</button>
+        </div>
+      </div>
 
       {error && <p className="error">{error}</p>}
 
