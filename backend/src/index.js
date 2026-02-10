@@ -281,6 +281,7 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
 // Presigned URL 발급 (이미지 업로드용)
 app.get('/api/upload-url', async (req, res) => {
   try {
+    const memBefore = process.memoryUsage().rss
     const { filename, contentType } = req.query
     if (!filename || !contentType) {
       return res.status(400).json({ error: 'filename and contentType are required' })
@@ -294,6 +295,8 @@ app.get('/api/upload-url', async (req, res) => {
     })
     const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 300 })
     const imageUrl = `https://kr.object.ncloudstorage.com/${BUCKET_NAME}/${key}`
+    const memAfter = process.memoryUsage().rss
+    console.log(`[Presigned URL] WAS 수신 데이터: ${req.headers['content-length'] || 0} bytes | 메모리 변화: ${memAfter - memBefore} bytes`)
     res.json({ uploadUrl, imageUrl })
   } catch (err) {
     console.error('Error generating presigned URL:', err)
@@ -304,6 +307,7 @@ app.get('/api/upload-url', async (req, res) => {
 // WAS 경유 업로드 (비교 테스트용)
 app.post('/api/upload-direct', upload.single('image'), async (req, res) => {
   try {
+    const memBefore = process.memoryUsage().rss
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' })
     }
@@ -316,6 +320,8 @@ app.post('/api/upload-direct', upload.single('image'), async (req, res) => {
       ACL: 'public-read'
     }))
     const imageUrl = `https://kr.object.ncloudstorage.com/${BUCKET_NAME}/${key}`
+    const memAfter = process.memoryUsage().rss
+    console.log(`[WAS 경유] WAS 수신 파일: ${req.file.size} bytes (${(req.file.size / 1024 / 1024).toFixed(2)} MB) | 메모리 변화: ${memAfter - memBefore} bytes`)
     res.json({ imageUrl })
   } catch (err) {
     console.error('Error uploading file:', err)
