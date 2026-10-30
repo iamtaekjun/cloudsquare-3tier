@@ -36,7 +36,7 @@ Public LB ──► Web #1 / Web #2 (Nginx, 정적 파일)
 | 보안 | NCP KMS로 Todo 제목 컬럼 암호화/복호화 |
 | 알림 | node-cron(1분 주기) + nodemailer로 예약 시간 이메일 발송 |
 
-서버 인스턴스는 Terraform 범위 밖(콘솔)에서 생성했고, Terraform은 네트워크·보안·LB 계층을 다룹니다.
+서버 인스턴스는 Terraform 범위 밖(콘솔)에서 생성했고, Terraform은 네트워크·보안·LB 계층을 다룹니다. Terraform 코드는 AI의 도움을 받아 작성했고, 직접 NCP에 적용해 구성했습니다.
 
 ## 주요 API
 
